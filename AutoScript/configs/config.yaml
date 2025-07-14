@@ -1,0 +1,38 @@
+system:
+  log_level: INFO
+  max_log_size: 10MB
+  backup_count: 5
+  auto_save_interval: 300
+
+plugins:
+  auto_load: true
+  plugin_dirs:
+    - plugins
+  disabled_plugins: []
+
+games:
+  games_dir: AutoScript/games
+  templates_dir: AutoScript/templates
+  auto_backup: true
+  backup_interval: 3600
+
+execution:
+  default_timeout: 30
+  exception_timeout: 60
+  max_concurrent_scripts: 5
+  screenshot_quality: 90
+
+ocr:
+  engine: paddleocr
+  language: ch
+  use_gpu: false
+
+template_matching:
+  default_threshold: 0.8
+  max_scale_factor: 1.2
+  min_scale_factor: 0.8
+
+web:
+  host: 127.0.0.1
+  port: 5000
+  debug: false
