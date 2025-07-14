@@ -1,0 +1,35 @@
+engine:
+  max_workers: 4
+  queue_size: 100
+  timeout: 30
+logging:
+  file: logs/autoscript.log
+  level: INFO
+  retention: 30 days
+  rotation: 10 MB
+ocr:
+  config: --psm 8
+  engine: tesseract
+  lang: chi_sim+eng
+plugins:
+  enabled:
+  - playwright
+  - windows
+  - scrcpy
+  playwright:
+    browser: chromium
+    headless: false
+    timeout: 30000
+  scrcpy:
+    bit_rate: 8M
+    max_size: 1920
+  windows:
+    process_timeout: 10
+template_matcher:
+  max_results: 10
+  method: cv2.TM_CCOEFF_NORMED
+  threshold: 0.8
+web:
+  debug: false
+  host: 0.0.0.0
+  port: 5000

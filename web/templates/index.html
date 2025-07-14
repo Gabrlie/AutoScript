@@ -99,7 +99,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         .main-content {
-            margin-left: 20px;
+            /* margin-left: 20px;  // 删除margin-left，保证并排 */
         }
         @media (max-width: 768px) {
             .main-content {
@@ -142,7 +142,7 @@
     </nav>
 
     <div class="container-fluid mt-4">
-        <div class="row">
+        <div class="row align-items-start">
             <!-- 侧边栏 -->
             <div class="col-md-3">
                 <div class="sidebar">
@@ -188,9 +188,9 @@
                 <div class="sidebar">
                     <h5><i class="fas fa-bolt"></i> 快速操作</h5>
                     <div class="d-grid gap-2">
-                        <button class="btn btn-primary action-btn" onclick="takeScreenshot()">
+                        <!-- <button class="btn btn-primary action-btn" onclick="takeScreenshot()">
                             <i class="fas fa-camera"></i> 截图
-                        </button>
+                        </button> -->
                         <button class="btn btn-primary action-btn" onclick="pauseQueue()">
                             <i class="fas fa-pause"></i> 暂停队列
                         </button>
