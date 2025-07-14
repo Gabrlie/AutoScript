@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoScript - 游戏自动化脚本管理系统</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --dark-color: #1f2937;
+            --light-color: #f8fafc;
+        }
+        
+        body {
+            background-color: var(--light-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        
+        .btn-custom {
+            border-radius: 25px;
+            padding: 10px 25px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, var(--primary-color), #7c3aed);
+            border: none;
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, var(--secondary-color), #059669);
+            border: none;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        .status-running { background-color: var(--secondary-color); }
+        .status-pending { background-color: var(--warning-color); }
+        .status-failed { background-color: var(--danger-color); }
+        .status-stopped { background-color: #6b7280; }
+        
+        .game-card {
+            background: linear-gradient(135deg, #ffffff, #f1f5f9);
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .script-item {
+            background-color: white;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-left: 3px solid var(--secondary-color);
+        }
+        
+        .plugin-card {
+            background: linear-gradient(135deg, #fef3c7, #fbbf24);
+            color: var(--dark-color);
+        }
+        
+        .queue-card {
+            background: linear-gradient(135deg, #dbeafe, #3b82f6);
+            color: white;
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #f0fdf4, var(--secondary-color));
+            color: white;
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary-color), #7c3aed);
+            color: white;
+            border-bottom: none;
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
+        }
+        
+        .sidebar {
+            background: linear-gradient(180deg, var(--dark-color), #374151);
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+        
+        .sidebar .nav-link {
+            color: #d1d5db;
+            border-radius: 10px;
+            margin: 5px 15px;
+            padding: 12px 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background-color: var(--primary-color);
+            color: white;
+            transform: translateX(5px);
+        }
+        
+        .loading {
+            display: none;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-robot me-2"></i>
+                AutoScript
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showSystemStatus()">
+                            <i class="fas fa-info-circle me-1"></i>系统状态
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="refreshData()">
+                            <i class="fas fa-sync-alt me-1"></i>刷新
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏 -->
+            <div class="col-md-2 sidebar">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" onclick="showTab('games')">
+                            <i class="fas fa-gamepad me-2"></i>游戏管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showTab('scripts')">
+                            <i class="fas fa-code me-2"></i>脚本管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showTab('queue')">
+                            <i class="fas fa-list me-2"></i>执行队列
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showTab('plugins')">
+                            <i class="fas fa-puzzle-piece me-2"></i>插件管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showTab('templates')">
+                            <i class="fas fa-images me-2"></i>模板管理
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- 主内容区 -->
+            <div class="col-md-10">
+                <div class="container-fluid py-4">
+                    
+                    <!-- 统计卡片 -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card stats-card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-gamepad fa-2x mb-2"></i>
+                                    <h3 id="total-games">0</h3>
+                                    <p class="mb-0">游戏总数</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card plugin-card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-puzzle-piece fa-2x mb-2"></i>
+                                    <h3 id="total-plugins">0</h3>
+                                    <p class="mb-0">可用插件</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card queue-card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-play fa-2x mb-2"></i>
+                                    <h3 id="running-scripts">0</h3>
+                                    <p class="mb-0">运行中脚本</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-clock fa-2x mb-2 text-warning"></i>
+                                    <h3 id="pending-scripts">0</h3>
+                                    <p class="mb-0">等待执行</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 游戏管理 -->
+                    <div id="games-tab" class="tab-content">
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-gamepad me-2"></i>游戏列表
+                                        </h5>
+                                        <div>
+                                            <button class="btn btn-success btn-custom me-2" onclick="showCreateGameModal()">
+                                                <i class="fas fa-plus me-1"></i>新建游戏
+                                            </button>
+                                            <button class="btn btn-primary btn-custom" onclick="showImportGameModal()">
+                                                <i class="fas fa-upload me-1"></i>导入游戏
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="games-list" class="row">
+                                            <!-- 游戏列表将在这里动态加载 -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 脚本管理 -->
+                    <div id="scripts-tab" class="tab-content" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">选择游戏</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <select id="game-selector" class="form-select" onchange="loadGameScripts()">
+                                            <option value="">请选择游戏</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">脚本列表</h6>
+                                        <button class="btn btn-success btn-sm btn-custom" onclick="showCreateScriptModal()">
+                                            <i class="fas fa-plus me-1"></i>新建脚本
+                                        </button>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="scripts-list">
+                                            <p class="text-muted text-center">请先选择游戏</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 执行队列 -->
+                    <div id="queue-tab" class="tab-content" style="display: none;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-list me-2"></i>执行队列状态
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="queue-list">
+                                    <!-- 队列状态将在这里动态加载 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 插件管理 -->
+                    <div id="plugins-tab" class="tab-content" style="display: none;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-puzzle-piece me-2"></i>可用插件
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="plugins-list" class="row">
+                                    <!-- 插件列表将在这里动态加载 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 模板管理 -->
+                    <div id="templates-tab" class="tab-content" style="display: none;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-images me-2"></i>模板管理
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">模板管理功能开发中...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建游戏模态框 -->
+    <div class="modal fade" id="createGameModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-plus me-2"></i>创建新游戏
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createGameForm">
+                        <div class="mb-3">
+                            <label class="form-label">游戏名称 *</label>
+                            <input type="text" class="form-control" id="gameName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">游戏描述</label>
+                            <textarea class="form-control" id="gameDescription" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">平台 *</label>
+                            <select class="form-select" id="gamePlatform" required>
+                                <option value="">请选择平台</option>
+                                <option value="android">Android</option>
+                                <option value="windows">Windows</option>
+                                <option value="ios">iOS</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">包名 (Android应用)</label>
+                            <input type="text" class="form-control" id="gamePackageName" 
+                                   placeholder="com.example.game">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary btn-custom" onclick="createGame()">创建游戏</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入游戏模态框 -->
+    <div class="modal fade" id="importGameModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-upload me-2"></i>导入游戏
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">选择游戏压缩包</label>
+                        <input type="file" class="form-control" id="gameImportFile" 
+                               accept=".zip" required>
+                        <div class="form-text">支持.zip格式的游戏导出文件</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary btn-custom" onclick="importGame()">导入游戏</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // 全局变量
+        let currentTab = 'games';
+        let selectedGameId = null;
+        let systemData = {};
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadInitialData();
+            // 每30秒刷新一次数据
+            setInterval(refreshData, 30000);
+        });
+
+        // 加载初始数据
+        async function loadInitialData() {
+            await Promise.all([
+                loadSystemStatus(),
+                loadGames(),
+                loadPlugins(),
+                loadQueueStatus()
+            ]);
+            updateStatistics();
+        }
+
+        // 刷新所有数据
+        async function refreshData() {
+            await loadInitialData();
+            showNotification('数据已刷新', 'info');
+        }
+
+        // 加载系统状态
+        async function loadSystemStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const result = await response.json();
+                if (result.success) {
+                    systemData = result.data;
+                }
+            } catch (error) {
+                console.error('加载系统状态失败:', error);
+            }
+        }
+
+        // 加载游戏列表
+        async function loadGames() {
+            try {
+                const response = await fetch('/api/games');
+                const result = await response.json();
+                if (result.success) {
+                    displayGames(result.data);
+                    updateGameSelector(result.data);
+                    systemData.games = result.data;
+                }
+            } catch (error) {
+                console.error('加载游戏列表失败:', error);
+            }
+        }
+
+        // 显示游戏列表
+        function displayGames(games) {
+            const gamesList = document.getElementById('games-list');
+            gamesList.innerHTML = '';
+
+            if (games.length === 0) {
+                gamesList.innerHTML = '<div class="col-12"><p class="text-muted text-center">暂无游戏，请创建或导入游戏</p></div>';
+                return;
+            }
+
+            games.forEach(game => {
+                const gameCard = `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card game-card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title mb-0">${game.name}</h6>
+                                    <span class="badge bg-${getPlatformColor(game.platform)}">${game.platform}</span>
+                                </div>
+                                <p class="card-text text-muted small">${game.description || '暂无描述'}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        <i class="fas fa-code me-1"></i>${game.script_count} 个脚本
+                                    </small>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" onclick="viewGame('${game.id}')">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-success" onclick="exportGame('${game.id}')">
+                                            <i class="fas fa-download"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="deleteGame('${game.id}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                gamesList.innerHTML += gameCard;
+            });
+        }
+
+        // 获取平台颜色
+        function getPlatformColor(platform) {
+            const colors = {
+                'android': 'success',
+                'windows': 'primary',
+                'ios': 'info'
+            };
+            return colors[platform] || 'secondary';
+        }
+
+        // 更新游戏选择器
+        function updateGameSelector(games) {
+            const selector = document.getElementById('game-selector');
+            selector.innerHTML = '<option value="">请选择游戏</option>';
+            
+            games.forEach(game => {
+                const option = document.createElement('option');
+                option.value = game.id;
+                option.textContent = game.name;
+                selector.appendChild(option);
+            });
+        }
+
+        // 加载插件列表
+        async function loadPlugins() {
+            try {
+                const response = await fetch('/api/plugins');
+                const result = await response.json();
+                if (result.success) {
+                    displayPlugins(result.data);
+                    systemData.plugins = result.data;
+                }
+            } catch (error) {
+                console.error('加载插件列表失败:', error);
+            }
+        }
+
+        // 显示插件列表
+        function displayPlugins(plugins) {
+            const pluginsList = document.getElementById('plugins-list');
+            pluginsList.innerHTML = '';
+
+            Object.entries(plugins).forEach(([name, plugin]) => {
+                const pluginCard = `
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">${name}</h6>
+                                <p class="card-text small">${plugin.description}</p>
+                                <div class="mb-2">
+                                    <small class="text-muted">版本: ${plugin.version}</small>
+                                </div>
+                                <div class="mb-2">
+                                    <small class="text-muted">平台: ${plugin.platforms.join(', ')}</small>
+                                </div>
+                                <div class="mb-2">
+                                    <small class="text-muted">动作: ${plugin.actions.length} 个</small>
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary" onclick="testPlugin('${name}')">
+                                    <i class="fas fa-play me-1"></i>测试
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                pluginsList.innerHTML += pluginCard;
+            });
+        }
+
+        // 加载队列状态
+        async function loadQueueStatus() {
+            try {
+                const response = await fetch('/api/queue/status');
+                const result = await response.json();
+                if (result.success) {
+                    displayQueueStatus(result.data);
+                    systemData.queues = result.data;
+                }
+            } catch (error) {
+                console.error('加载队列状态失败:', error);
+            }
+        }
+
+        // 显示队列状态
+        function displayQueueStatus(queues) {
+            const queueList = document.getElementById('queue-list');
+            queueList.innerHTML = '';
+
+            if (queues.length === 0) {
+                queueList.innerHTML = '<p class="text-muted text-center">暂无执行队列</p>';
+                return;
+            }
+
+            queues.forEach(queue => {
+                const queueCard = `
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="fas fa-gamepad me-2"></i>${queue.game_name}
+                            </h6>
+                            <div>
+                                <span class="status-indicator status-${queue.enabled ? 'running' : 'stopped'}"></span>
+                                ${queue.enabled ? '运行中' : '已停止'}
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>当前执行:</h6>
+                                    ${queue.running_script ? `
+                                        <p class="mb-1">${queue.running_script.name}</p>
+                                        <small class="text-muted">开始时间: ${new Date(queue.running_script.started_at).toLocaleString()}</small>
+                                    ` : '<p class="text-muted">无</p>'}
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>等待队列 (${queue.queue_length}):</h6>
+                                    ${queue.pending_scripts.length > 0 ? 
+                                        queue.pending_scripts.slice(0, 3).map(script => 
+                                            `<p class="mb-1 small">${script.name} (优先级: ${script.priority})</p>`
+                                        ).join('') +
+                                        (queue.pending_scripts.length > 3 ? `<small class="text-muted">还有 ${queue.pending_scripts.length - 3} 个...</small>` : '')
+                                        : '<p class="text-muted">无</p>'
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                queueList.innerHTML += queueCard;
+            });
+        }
+
+        // 更新统计数据
+        function updateStatistics() {
+            const totalGames = systemData.games ? systemData.games.length : 0;
+            const totalPlugins = systemData.plugins ? Object.keys(systemData.plugins).length : 0;
+            
+            let runningScripts = 0;
+            let pendingScripts = 0;
+            
+            if (systemData.queues) {
+                systemData.queues.forEach(queue => {
+                    if (queue.running_script) runningScripts++;
+                    pendingScripts += queue.queue_length;
+                });
+            }
+
+            document.getElementById('total-games').textContent = totalGames;
+            document.getElementById('total-plugins').textContent = totalPlugins;
+            document.getElementById('running-scripts').textContent = runningScripts;
+            document.getElementById('pending-scripts').textContent = pendingScripts;
+        }
+
+        // 标签页切换
+        function showTab(tabName) {
+            // 隐藏所有标签页
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.style.display = 'none';
+            });
+            
+            // 移除所有活动状态
+            document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // 显示目标标签页
+            document.getElementById(tabName + '-tab').style.display = 'block';
+            
+            // 设置活动状态
+            event.target.classList.add('active');
+            
+            currentTab = tabName;
+            
+            // 根据标签页加载对应数据
+            if (tabName === 'scripts' && selectedGameId) {
+                loadGameScripts();
+            }
+        }
+
+        // 显示创建游戏模态框
+        function showCreateGameModal() {
+            const modal = new bootstrap.Modal(document.getElementById('createGameModal'));
+            modal.show();
+        }
+
+        // 创建游戏
+        async function createGame() {
+            const form = document.getElementById('createGameForm');
+            const formData = new FormData(form);
+            
+            const gameData = {
+                name: document.getElementById('gameName').value,
+                description: document.getElementById('gameDescription').value,
+                platform: document.getElementById('gamePlatform').value,
+                package_name: document.getElementById('gamePackageName').value
+            };
+
+            try {
+                const response = await fetch('/api/games', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(gameData)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showNotification('游戏创建成功', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('createGameModal')).hide();
+                    form.reset();
+                    await loadGames();
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('创建游戏失败: ' + error.message, 'error');
+            }
+        }
+
+        // 显示导入游戏模态框
+        function showImportGameModal() {
+            const modal = new bootstrap.Modal(document.getElementById('importGameModal'));
+            modal.show();
+        }
+
+        // 导入游戏
+        async function importGame() {
+            const fileInput = document.getElementById('gameImportFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showNotification('请选择文件', 'warning');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/games/import', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showNotification('游戏导入成功', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('importGameModal')).hide();
+                    fileInput.value = '';
+                    await loadGames();
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('导入游戏失败: ' + error.message, 'error');
+            }
+        }
+
+        // 导出游戏
+        async function exportGame(gameId) {
+            try {
+                const response = await fetch(`/api/games/${gameId}/export`);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `game_${gameId}.zip`;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    showNotification('游戏导出成功', 'success');
+                } else {
+                    const result = await response.json();
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('导出游戏失败: ' + error.message, 'error');
+            }
+        }
+
+        // 加载游戏脚本
+        async function loadGameScripts() {
+            const gameId = document.getElementById('game-selector').value;
+            if (!gameId) {
+                document.getElementById('scripts-list').innerHTML = '<p class="text-muted text-center">请先选择游戏</p>';
+                return;
+            }
+
+            selectedGameId = gameId;
+
+            try {
+                const response = await fetch(`/api/games/${gameId}/scripts`);
+                const result = await response.json();
+                if (result.success) {
+                    displayScripts(result.data);
+                }
+            } catch (error) {
+                console.error('加载脚本列表失败:', error);
+            }
+        }
+
+        // 显示脚本列表
+        function displayScripts(scripts) {
+            const scriptsList = document.getElementById('scripts-list');
+            scriptsList.innerHTML = '';
+
+            if (scripts.length === 0) {
+                scriptsList.innerHTML = '<p class="text-muted text-center">暂无脚本</p>';
+                return;
+            }
+
+            scripts.forEach(script => {
+                const scriptItem = `
+                    <div class="script-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">${script.name}</h6>
+                                <p class="mb-1 text-muted small">${script.description}</p>
+                                <small class="text-muted">
+                                    类型: ${getScriptTypeLabel(script.script_type)} | 
+                                    状态: ${script.enabled ? '启用' : '禁用'}
+                                </small>
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" onclick="editScript('${script.id}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-outline-success" onclick="addToQueue('${script.id}')">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="deleteScript('${script.id}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                scriptsList.innerHTML += scriptItem;
+            });
+        }
+
+        // 获取脚本类型标签
+        function getScriptTypeLabel(type) {
+            const labels = {
+                'startup': '启动脚本',
+                'exception': '异常处理',
+                'basic': '基础脚本',
+                'custom': '自定义脚本'
+            };
+            return labels[type] || type;
+        }
+
+        // 显示通知
+        function showNotification(message, type = 'info') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 3000);
+        }
+
+        // 显示系统状态
+        function showSystemStatus() {
+            let statusHtml = '<h6>系统状态</h6>';
+            statusHtml += `<p>状态: ${systemData.status || '未知'}</p>`;
+            
+            if (systemData.config) {
+                statusHtml += '<h6>配置信息</h6>';
+                statusHtml += `<p>OCR引擎: ${systemData.config.ocr_engine}</p>`;
+                statusHtml += `<p>Web端口: ${systemData.config.web_port}</p>`;
+                statusHtml += `<p>日志级别: ${systemData.config.log_level}</p>`;
+            }
+            
+            alert(statusHtml);
+        }
+
+        // 测试插件
+        function testPlugin(pluginName) {
+            showNotification(`测试插件: ${pluginName}`, 'info');
+        }
+
+        // 查看游戏
+        function viewGame(gameId) {
+            showNotification('查看游戏功能开发中...', 'info');
+        }
+
+        // 删除游戏
+        function deleteGame(gameId) {
+            if (confirm('确定要删除这个游戏吗？此操作不可恢复。')) {
+                showNotification('删除游戏功能开发中...', 'info');
+            }
+        }
+
+        // 编辑脚本
+        function editScript(scriptId) {
+            showNotification('编辑脚本功能开发中...', 'info');
+        }
+
+        // 添加到队列
+        function addToQueue(scriptId) {
+            showNotification('添加到队列功能开发中...', 'info');
+        }
+
+        // 删除脚本
+        function deleteScript(scriptId) {
+            if (confirm('确定要删除这个脚本吗？')) {
+                showNotification('删除脚本功能开发中...', 'info');
+            }
+        }
+
+        // 显示创建脚本模态框
+        function showCreateScriptModal() {
+            if (!selectedGameId) {
+                showNotification('请先选择游戏', 'warning');
+                return;
+            }
+            showNotification('创建脚本功能开发中...', 'info');
+        }
+    </script>
+</body>
+</html>
