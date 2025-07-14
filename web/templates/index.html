@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoScript - 游戏自动化脚本平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .navbar-brand {
+            font-weight: bold;
+            color: white !important;
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 5px;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #654b94 100%);
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .status-running {
+            background-color: #28a745;
+            animation: pulse 2s infinite;
+        }
+        .status-stopped {
+            background-color: #dc3545;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .plugin-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .task-item {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .progress-bar {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+        .log-container {
+            background: #2c3e50;
+            color: #ecf0f1;
+            font-family: 'Courier New', monospace;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .action-btn {
+            margin: 2px;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        .sidebar {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .main-content {
+            margin-left: 20px;
+        }
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                margin-top: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-robot"></i> AutoScript
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#dashboard">仪表盘</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#plugins">插件管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#scripts">脚本管理</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#tools">工具箱</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#settings">设置</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- 侧边栏 -->
+            <div class="col-md-3">
+                <div class="sidebar">
+                    <h5><i class="fas fa-tachometer-alt"></i> 系统状态</h5>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>引擎状态:</span>
+                            <span id="engine-status">
+                                <span class="status-indicator status-stopped"></span>
+                                已停止
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>队列状态:</span>
+                            <span id="queue-status">空闲</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>运行任务:</span>
+                            <span id="running-tasks">0</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>已完成任务:</span>
+                            <span id="completed-tasks">0</span>
+                        </div>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-success" id="start-engine" onclick="startEngine()">
+                            <i class="fas fa-play"></i> 启动引擎
+                        </button>
+                        <button class="btn btn-danger" id="stop-engine" onclick="stopEngine()" disabled>
+                            <i class="fas fa-stop"></i> 停止引擎
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 快速操作 -->
+                <div class="sidebar">
+                    <h5><i class="fas fa-bolt"></i> 快速操作</h5>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary action-btn" onclick="takeScreenshot()">
+                            <i class="fas fa-camera"></i> 截图
+                        </button>
+                        <button class="btn btn-primary action-btn" onclick="pauseQueue()">
+                            <i class="fas fa-pause"></i> 暂停队列
+                        </button>
+                        <button class="btn btn-primary action-btn" onclick="resumeQueue()">
+                            <i class="fas fa-play"></i> 恢复队列
+                        </button>
+                        <button class="btn btn-warning action-btn" onclick="clearQueue()">
+                            <i class="fas fa-trash"></i> 清理队列
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主要内容区域 -->
+            <div class="col-md-9 main-content">
+                <!-- 仪表盘 -->
+                <div id="dashboard" class="section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-chart-line"></i> 仪表盘</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>运行中的任务</h6>
+                                    <div id="running-tasks-list">
+                                        <div class="text-muted">暂无运行中的任务</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>系统日志</h6>
+                                    <div class="log-container" id="system-log">
+                                        <div class="text-muted">等待日志...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 插件管理 -->
+                <div id="plugins" class="section" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-plug"></i> 插件管理</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="plugins-list">
+                                <div class="text-center">
+                                    <i class="fas fa-spinner fa-spin"></i> 加载中...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 脚本管理 -->
+                <div id="scripts" class="section" style="display: none;">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5><i class="fas fa-file-code"></i> 脚本管理</h5>
+                            <button class="btn btn-primary" onclick="showCreateScriptModal()">
+                                <i class="fas fa-plus"></i> 新建脚本
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="scripts-list">
+                                <div class="text-center">
+                                    <i class="fas fa-spinner fa-spin"></i> 加载中...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 工具箱 -->
+                <div id="tools" class="section" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-toolbox"></i> 工具箱</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-search"></i> 模板匹配</h6>
+                                    <div class="mb-3">
+                                        <input type="text" class="form-control" id="template-name" placeholder="模板名称">
+                                    </div>
+                                    <button class="btn btn-primary" onclick="findTemplate()">查找模板</button>
+                                    <div id="template-result" class="mt-3"></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-eye"></i> OCR识别</h6>
+                                    <div class="mb-3">
+                                        <input type="file" class="form-control" id="ocr-image" accept="image/*">
+                                    </div>
+                                    <button class="btn btn-primary" onclick="recognizeText()">识别文本</button>
+                                    <div id="ocr-result" class="mt-3"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 设置 -->
+                <div id="settings" class="section" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-cog"></i> 系统设置</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="settings-form">
+                                <div class="text-center">
+                                    <i class="fas fa-spinner fa-spin"></i> 加载中...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建脚本模态框 -->
+    <div class="modal fade" id="createScriptModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">新建脚本</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="script-form">
+                        <div class="mb-3">
+                            <label class="form-label">脚本名称</label>
+                            <input type="text" class="form-control" id="script-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">选择插件</label>
+                            <select class="form-select" id="script-plugin" required>
+                                <option value="">请选择插件</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">动作配置</label>
+                            <textarea class="form-control" id="script-actions" rows="10" placeholder="请输入JSON格式的动作配置"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">优先级</label>
+                            <select class="form-select" id="script-priority">
+                                <option value="0">普通</option>
+                                <option value="1">高</option>
+                                <option value="2">最高</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="createScript()">创建</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+    <script>
+        // 全局变量
+        let socket;
+        let currentSection = 'dashboard';
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSocket();
+            loadInitialData();
+            setupNavigation();
+        });
+
+        // 初始化Socket.IO连接
+        function initializeSocket() {
+            socket = io();
+            
+            socket.on('connect', function() {
+                console.log('已连接到服务器');
+                addLogMessage('已连接到服务器');
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('与服务器断开连接');
+                addLogMessage('与服务器断开连接');
+            });
+            
+            socket.on('status_update', function(data) {
+                updateSystemStatus(data);
+            });
+            
+            socket.on('action_result', function(data) {
+                console.log('动作执行结果:', data);
+                addLogMessage('动作执行结果: ' + JSON.stringify(data));
+            });
+            
+            socket.on('error', function(data) {
+                console.error('错误:', data);
+                addLogMessage('错误: ' + data.message);
+            });
+        }
+
+        // 加载初始数据
+        function loadInitialData() {
+            loadEngineStatus();
+            loadPlugins();
+            loadScripts();
+            loadConfig();
+        }
+
+        // 设置导航
+        function setupNavigation() {
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href').substring(1);
+                    showSection(targetId);
+                });
+            });
+        }
+
+        // 显示指定区域
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.style.display = 'none';
+            });
+            document.getElementById(sectionId).style.display = 'block';
+            currentSection = sectionId;
+            
+            // 更新活动导航
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector(`[href="#${sectionId}"]`).classList.add('active');
+        }
+
+        // 更新系统状态
+        function updateSystemStatus(data) {
+            const engineStatus = document.getElementById('engine-status');
+            const queueStatus = document.getElementById('queue-status');
+            const runningTasks = document.getElementById('running-tasks');
+            const completedTasks = document.getElementById('completed-tasks');
+            
+            if (data.engine_running) {
+                engineStatus.innerHTML = '<span class="status-indicator status-running"></span>运行中';
+                document.getElementById('start-engine').disabled = true;
+                document.getElementById('stop-engine').disabled = false;
+            } else {
+                engineStatus.innerHTML = '<span class="status-indicator status-stopped"></span>已停止';
+                document.getElementById('start-engine').disabled = false;
+                document.getElementById('stop-engine').disabled = true;
+            }
+            
+            if (data.queue_status) {
+                queueStatus.textContent = data.queue_status.paused ? '已暂停' : '运行中';
+                runningTasks.textContent = data.queue_status.running_tasks;
+                completedTasks.textContent = data.queue_status.completed_tasks;
+            }
+            
+            // 更新运行中的任务列表
+            if (data.running_tasks) {
+                updateRunningTasksList(data.running_tasks);
+            }
+        }
+
+        // 更新运行中的任务列表
+        function updateRunningTasksList(tasks) {
+            const container = document.getElementById('running-tasks-list');
+            if (tasks.length === 0) {
+                container.innerHTML = '<div class="text-muted">暂无运行中的任务</div>';
+                return;
+            }
+            
+            let html = '';
+            tasks.forEach(task => {
+                html += `
+                    <div class="task-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>${task.name}</span>
+                            <span class="badge bg-primary">${task.status}</span>
+                        </div>
+                        <div class="progress mt-2">
+                            <div class="progress-bar" role="progressbar" style="width: ${task.progress}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // 添加日志消息
+        function addLogMessage(message) {
+            const logContainer = document.getElementById('system-log');
+            const timestamp = new Date().toLocaleTimeString();
+            logContainer.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // 引擎控制
+        async function startEngine() {
+            try {
+                const response = await fetch('/api/engine/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLogMessage('引擎启动成功');
+                } else {
+                    addLogMessage('引擎启动失败: ' + data.message);
+                }
+            } catch (error) {
+                addLogMessage('引擎启动失败: ' + error.message);
+            }
+        }
+
+        async function stopEngine() {
+            try {
+                const response = await fetch('/api/engine/stop', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLogMessage('引擎停止成功');
+                } else {
+                    addLogMessage('引擎停止失败: ' + data.message);
+                }
+            } catch (error) {
+                addLogMessage('引擎停止失败: ' + error.message);
+            }
+        }
+
+        // 加载引擎状态
+        async function loadEngineStatus() {
+            try {
+                const response = await fetch('/api/engine/status');
+                const data = await response.json();
+                if (data.success) {
+                    updateSystemStatus(data.data);
+                }
+            } catch (error) {
+                console.error('加载引擎状态失败:', error);
+            }
+        }
+
+        // 加载插件列表
+        async function loadPlugins() {
+            try {
+                const response = await fetch('/api/plugins');
+                const data = await response.json();
+                if (data.success) {
+                    renderPluginsList(data.data);
+                }
+            } catch (error) {
+                console.error('加载插件列表失败:', error);
+            }
+        }
+
+        // 渲染插件列表
+        function renderPluginsList(plugins) {
+            const container = document.getElementById('plugins-list');
+            let html = '';
+            
+            Object.entries(plugins).forEach(([name, plugin]) => {
+                html += `
+                    <div class="plugin-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6>${plugin.name}</h6>
+                                <p class="text-muted mb-1">${plugin.description}</p>
+                                <small class="text-muted">版本: ${plugin.version} | 作者: ${plugin.author}</small>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm ${plugin.enabled ? 'btn-success' : 'btn-outline-secondary'}" 
+                                        onclick="togglePlugin('${name}', ${plugin.enabled})">
+                                    ${plugin.enabled ? '已启用' : '已禁用'}
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" onclick="showPluginActions('${name}')">
+                                    动作列表
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <strong>支持的动作:</strong>
+                            <div class="mt-1">
+                                ${plugin.actions.map(action => `<span class="badge bg-light text-dark me-1">${action}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // 切换插件状态
+        async function togglePlugin(pluginName, isEnabled) {
+            try {
+                const endpoint = isEnabled ? 'disable' : 'enable';
+                const response = await fetch(`/api/plugins/${pluginName}/${endpoint}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLogMessage(data.message);
+                    loadPlugins(); // 重新加载插件列表
+                } else {
+                    addLogMessage('操作失败: ' + data.message);
+                }
+            } catch (error) {
+                addLogMessage('操作失败: ' + error.message);
+            }
+        }
+
+        // 显示插件动作
+        function showPluginActions(pluginName) {
+            // 这里可以实现显示插件动作的详细信息
+            alert(`插件 ${pluginName} 的动作列表`);
+        }
+
+        // 加载脚本列表
+        async function loadScripts() {
+            try {
+                const response = await fetch('/api/scripts');
+                const data = await response.json();
+                if (data.success) {
+                    renderScriptsList(data.data);
+                }
+            } catch (error) {
+                console.error('加载脚本列表失败:', error);
+            }
+        }
+
+        // 渲染脚本列表
+        function renderScriptsList(scripts) {
+            const container = document.getElementById('scripts-list');
+            if (scripts.length === 0) {
+                container.innerHTML = '<div class="text-muted text-center">暂无脚本</div>';
+                return;
+            }
+            
+            let html = '';
+            scripts.forEach(script => {
+                const statusClass = {
+                    'pending': 'bg-warning',
+                    'running': 'bg-primary',
+                    'completed': 'bg-success',
+                    'failed': 'bg-danger',
+                    'cancelled': 'bg-secondary'
+                }[script.status] || 'bg-secondary';
+                
+                html += `
+                    <div class="task-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6>${script.name}</h6>
+                                <small class="text-muted">创建时间: ${new Date(script.created_at).toLocaleString()}</small>
+                            </div>
+                            <div>
+                                <span class="badge ${statusClass}">${script.status}</span>
+                                ${script.status === 'running' ? 
+                                    `<button class="btn btn-sm btn-danger ms-2" onclick="cancelScript('${script.id}')">取消</button>` : 
+                                    ''
+                                }
+                            </div>
+                        </div>
+                        ${script.progress > 0 ? `
+                            <div class="progress mt-2">
+                                <div class="progress-bar" role="progressbar" style="width: ${script.progress}%"></div>
+                            </div>
+                        ` : ''}
+                        ${script.error_message ? `
+                            <div class="alert alert-danger mt-2 mb-0">
+                                <small>${script.error_message}</small>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // 取消脚本
+        async function cancelScript(taskId) {
+            try {
+                const response = await fetch(`/api/scripts/${taskId}/cancel`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLogMessage(data.message);
+                    loadScripts(); // 重新加载脚本列表
+                } else {
+                    addLogMessage('取消失败: ' + data.message);
+                }
+            } catch (error) {
+                addLogMessage('取消失败: ' + error.message);
+            }
+        }
+
+        // 显示创建脚本模态框
+        function showCreateScriptModal() {
+            // 先加载插件列表到下拉框
+            loadPluginsToSelect();
+            const modal = new bootstrap.Modal(document.getElementById('createScriptModal'));
+            modal.show();
+        }
+
+        // 加载插件到选择框
+        async function loadPluginsToSelect() {
+            try {
+                const response = await fetch('/api/plugins');
+                const data = await response.json();
+                if (data.success) {
+                    const select = document.getElementById('script-plugin');
+                    select.innerHTML = '<option value="">请选择插件</option>';
+                    
+                    Object.entries(data.data).forEach(([name, plugin]) => {
+                        if (plugin.enabled) {
+                            select.innerHTML += `<option value="${name}">${plugin.name}</option>`;
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('加载插件失败:', error);
+            }
+        }
+
+        // 创建脚本
+        async function createScript() {
+            const name = document.getElementById('script-name').value;
+            const pluginName = document.getElementById('script-plugin').value;
+            const actionsText = document.getElementById('script-actions').value;
+            const priority = parseInt(document.getElementById('script-priority').value);
+            
+            if (!name || !pluginName || !actionsText) {
+                alert('请填写所有必填字段');
+                return;
+            }
+            
+            try {
+                const actions = JSON.parse(actionsText);
+                
+                const response = await fetch('/api/scripts', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: name,
+                        plugin_name: pluginName,
+                        actions: actions,
+                        priority: priority
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    addLogMessage(`脚本创建成功: ${name}`);
+                    bootstrap.Modal.getInstance(document.getElementById('createScriptModal')).hide();
+                    loadScripts(); // 重新加载脚本列表
+                    
+                    // 清空表单
+                    document.getElementById('script-form').reset();
+                } else {
+                    addLogMessage('脚本创建失败: ' + data.message);
+                }
+            } catch (error) {
+                addLogMessage('脚本创建失败: ' + error.message);
+            }
+        }
+
+        // 队列控制
+        async function pauseQueue() {
+            try {
+                const response = await fetch('/api/queue/pause', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLogMessage('队列已暂停');
+                } else {
+                    addLogMessage('暂停失败: ' + data.message);
+                }
+            } catch (error) {
+                addLogMessage('暂停失败: ' + error.message);
+            }
+        }
+
+        async function resumeQueue() {
+            try {
+                const response = await fetch('/api/queue/resume', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLogMessage('队列已恢复');
+                } else {
+                    addLogMessage('恢复失败: ' + data.message);
+                }
+            } catch (error) {
+                addLogMessage('恢复失败: ' + error.message);
+            }
+        }
+
+        async function clearQueue() {
+            try {
+                const response = await fetch('/api/queue/clear', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const data = await response.json();
+                if (data.success) {
+                    addLogMessage('队列已清理');
+                    loadScripts(); // 重新加载脚本列表
+                } else {
+                    addLogMessage('清理失败: ' + data.message);
+                }
+            } catch (error) {
+                addLogMessage('清理失败: ' + error.message);
+            }
+        }
+
+        // 工具函数
+        async function findTemplate() {
+            const templateName = document.getElementById('template-name').value;
+            if (!templateName) {
+                alert('请输入模板名称');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/templates/find', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({template_name: templateName})
+                });
+                const data = await response.json();
+                const resultDiv = document.getElementById('template-result');
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>找到模板!</strong><br>
+                            置信度: ${data.data.confidence}<br>
+                            位置: (${data.data.location[0]}, ${data.data.location[1]})<br>
+                            中心点: (${data.data.center[0]}, ${data.data.center[1]})
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="alert alert-warning">模板未找到</div>`;
+                }
+            } catch (error) {
+                document.getElementById('template-result').innerHTML = 
+                    `<div class="alert alert-danger">查找失败: ${error.message}</div>`;
+            }
+        }
+
+        async function recognizeText() {
+            const fileInput = document.getElementById('ocr-image');
+            if (!fileInput.files[0]) {
+                alert('请选择图片文件');
+                return;
+            }
+            
+            // 这里需要实现文件上传和OCR识别
+            document.getElementById('ocr-result').innerHTML = 
+                '<div class="alert alert-info">OCR功能开发中...</div>';
+        }
+
+        async function takeScreenshot() {
+            try {
+                const response = await fetch('/api/screenshot', {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'screenshot.png';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    addLogMessage('截图成功');
+                } else {
+                    addLogMessage('截图失败');
+                }
+            } catch (error) {
+                addLogMessage('截图失败: ' + error.message);
+            }
+        }
+
+        // 加载配置
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const data = await response.json();
+                if (data.success) {
+                    renderConfigForm(data.data);
+                }
+            } catch (error) {
+                console.error('加载配置失败:', error);
+            }
+        }
+
+        // 渲染配置表单
+        function renderConfigForm(config) {
+            const container = document.getElementById('settings-form');
+            let html = '<form id="config-form">';
+            
+            // 这里可以根据配置结构生成表单
+            html += '<div class="alert alert-info">配置功能开发中...</div>';
+            html += '<pre>' + JSON.stringify(config, null, 2) + '</pre>';
+            
+            html += '</form>';
+            container.innerHTML = html;
+        }
+
+        // 定期更新状态
+        setInterval(() => {
+            if (socket && socket.connected) {
+                socket.emit('get_real_time_status');
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
